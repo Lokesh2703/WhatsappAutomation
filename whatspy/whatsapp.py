@@ -3,6 +3,7 @@ from datetime import datetime
 from time import sleep
 import traceback
 import time
+from tkinter import messagebox
 
 from .chrome import Chrome
 # from .remote import ChromeRemote
@@ -40,10 +41,13 @@ class Whatsapp:
     def _check_valid_qrcode(self):
         # Not logged in
         small_timeout = 5
+        messageShown = False
         while not self.chrome.element_exists_at(self.selectors['search_input'], timeout=small_timeout):
             qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
             self.chrome.screenshot('./qrcode.png')
-            
+            if not messageShown:
+                messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
+                messageShown = True
             print('Look for whatsapp QRCode inside your running directory.')
             sleep(small_timeout)
         
