@@ -11,6 +11,7 @@ from tkinter import messagebox
 import sqlite3 as sql
 import datetime
 from tkinter import ttk
+from PIL import ImageTk, Image
 # from sqlite_dump import iterdump
 
 imageTypes = {'jpeg':1,'jpg':1,'mkv':1,'mp4':1,'gif':1,'png':1,'webp':1,'svg':1}
@@ -42,11 +43,11 @@ def send_message():
     try:
         num_or_nameInputStr = num_or_nameInput.get()
         messageInputStr = messageInput.get(1.0,"end-1c")
+        checkifLogged()
         if fileSelector.cget('text')!="Select File":
             if os.path.exists(fileSelector.cget('text')):
                 ext = str(fileSelector.cget('text').split('.')[1])
                 ismedia = imageTypes.__contains__(ext)
-                print(ismedia)
                 if ismedia:
                     whats.send_media(to=num_or_nameInputStr,imagepath=fileSelector.cget('text'),msg=messageInputStr)
                 else:
@@ -54,7 +55,11 @@ def send_message():
                         whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
                     whats.send_document(to=num_or_nameInputStr,docpath=fileSelector.cget('text'))
         elif len(messageInputStr)>0:
-            whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
+            try:
+                whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
+            except Exception as e:
+                print(e)
+                raise e
         conn = sql.connect('history.db')
         c = conn.cursor()
         
@@ -69,7 +74,10 @@ def send_message():
         messageInput.delete(1.0,"end")
         fileSelector.configure(text="Select File")
     except Exception as e:
-        raise e
+        print(e)
+        print("Error in Send_Message\n1. Check if Number or Name is Correct")
+        messagebox.showerror("Error in Sending Message","Error in Send_Message\n1. Check if Number or Name is Correct\n2. Check if document exists(if selected any)")
+        # raise e
 
 
 def browseFiles():
@@ -150,6 +158,59 @@ def table_view():
     conn.close()
     tree.pack(expand=True,fill="both")
 
+# def checkifLogged():
+#     if whats._check_valid_qrcode():
+#         if os.path.exists("./QRcode.png"):
+#             QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
+#             QRlabel.configure(image=QRcodeimage,text='')
+
+def showQRcode():
+    global QRlabel
+    QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
+    QRlabel.configure(image=QRcodeimage,text='')
+    QRlabel.pack()
+
+def checkifLogged():
+    # Not logged in
+    small_timeout = 5
+    messageShown = False
+    while not whats.chrome.element_exists_at(whats.selectors['search_input'], timeout=small_timeout):
+        # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
+        elem =  whats.chrome.find_element_by_tag_name("canvas")
+        elem.screenshot("./QRcode.png")
+        QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
+        QRlabel.configure(image=QRcodeimage,text='')
+        # self.chrome.screenshot('./qrcode.png')
+        if not messageShown:
+            messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
+            messageShown = True
+        print('Look for whatsapp QRCode inside your running directory.')
+        time.sleep(small_timeout)
+
+    # QRlabel.configure(text="Logged In Already")
+    print('Whatsapp successfully logged in...')
+
+
+# def checkifLogged2():
+#     # Not logged in
+#     small_timeout = 5
+#     messageShown = False
+#     while not whats.chrome.element_exists_at(whats.selectors['search_input'], timeout=small_timeout):
+#         # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
+#         elem =  whats.chrome.find_element_by_tag_name("canvas")
+#         elem.screenshot("./QRcode.png")
+#         QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
+#         QRlabel.configure(image=QRcodeimage,text='')
+#         # self.chrome.screenshot('./qrcode.png')
+#         if not messageShown:
+#             messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
+#             messageShown = True
+#         print('Look for whatsapp QRCode inside your running directory.')
+#         time.sleep(small_timeout)
+
+#     # QRlabel.configure(text="Logged In Already",image=None)
+#     print('Whatsapp successfully logged in...')
+
 if __name__ == '__main__':
     
     try:
@@ -177,8 +238,10 @@ if __name__ == '__main__':
         style = ttk.Style(guiwin)
         style.theme_use("xpnative")
         mainFrame = Frame(guiwin)
+        customSendParentFrame = LabelFrame(mainFrame,text="Custom Send Parent Frame")
 
-        customSendFrame = LabelFrame(mainFrame,text="Custom Send Message and/or Documents or Media")
+        customSendFrame = LabelFrame(customSendParentFrame,text="Custom Send Message and/or Documents or Media")
+        customSendQRFrame = LabelFrame(customSendParentFrame,text="QRCode")
         csvsendFrame = LabelFrame(mainFrame,text="Send From CSV File")
         historyFrame = LabelFrame(mainFrame,text="History Handler")
         tableFrame = LabelFrame(mainFrame,text="Table")
@@ -194,6 +257,15 @@ if __name__ == '__main__':
         fileSelector = Button(customSendFrame,command=browseFiles,text="Select File")
         submitButton = Button(customSendFrame,text="Send Message",command=send_message)
         
+        QRlabel = Label(customSendQRFrame,text="Session")
+        QRlabel.pack()
+        # checkQRButton = Button(customSendQRFrame,text="Check if Logged in",command=checkifLogged)
+        # checkQRButton.pack()
+        # if whats._check_valid_qrcode():
+        #     if os.path.exists("./QRcode.png"):
+        #         QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
+        #         QRlabel.configure(image=QRcodeimage,text='')
+
         separator = Separator(customSendFrame,orient="horizontal")
 
         csvsendLabel = Label(csvsendFrame,text="Send Messages using a CSV file")
@@ -217,7 +289,9 @@ if __name__ == '__main__':
         historyButton.grid(row=7,column=0)
 
         
-        customSendFrame.pack()
+        customSendFrame.grid(row=0,column=0)
+        customSendQRFrame.grid(row=0,column=1)
+        customSendParentFrame.pack(fill="both",expand="yes")
         csvsendFrame.pack(expand="yes",fill="both")
         historyFrame.pack(expand="yes",fill="both")
         tableFrame.pack(expand="yes",fill="both")
@@ -225,6 +299,7 @@ if __name__ == '__main__':
         mainFrame.pack(fill="both",expand="yes",padx=10,pady=10)
         
         guiwin.mainloop()
+        checkifLogged()
         # time.sleep(5)
         # whats.chrome.quit()
 
