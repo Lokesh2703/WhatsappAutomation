@@ -4,6 +4,7 @@ from time import sleep
 import traceback
 import time
 from tkinter import messagebox
+from main import showQRcode
 
 from .chrome import Chrome
 # from .remote import ChromeRemote
@@ -43,8 +44,16 @@ class Whatsapp:
         small_timeout = 5
         messageShown = False
         while not self.chrome.element_exists_at(self.selectors['search_input'], timeout=small_timeout):
-            qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
-            self.chrome.screenshot('./qrcode.png')
+            # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
+            elem =  self.chrome.find_element_by_tag_name("canvas")
+            elem.screenshot("./QRcode.png")
+            # try:
+            #     showQRcode()
+            # except Exception as e:
+            #     print(e)
+            #     print("Error in showQRcode")
+                # raise e
+            # self.chrome.screenshot('./qrcode.png')
             if not messageShown:
                 messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
                 messageShown = True
@@ -83,16 +92,16 @@ class Whatsapp:
             try:
                 self._type_message(message)
             except Exception as e:
-                print('Error in Typing Message')
+                print('Error in Typing Message or Number not Found')
                 raise e
             
             
         except Exception as e:
-            print('An unexpected error occured. Quiting chrome now')
+            print('An unexpected error occured.')
             self.chrome.screenshot('./error.png')
-            self.chrome.quit()
+            # self.chrome.quit()
             
-            # raise e
+            raise e
             
             
     def load_chats(self):
