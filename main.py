@@ -16,29 +16,6 @@ from PIL import ImageTk, Image
 
 imageTypes = {'jpeg':1,'jpg':1,'mkv':1,'mp4':1,'gif':1,'png':1,'webp':1,'svg':1}
 
-def send_csv():
-    file = open(selectcsvButton.cget('text'))
-    csv_file = csv.DictReader(file)
-    loadingLabel.configure(text="Loading....")
-    for row in csv_file:
-        print(row['Names'],row['Messages'],row['Documents'])
-        if (len(row['Names'])>0 and len(row['Documents'])>0):
-            ext = str(row['Documents'].split('.')[1])
-            ismedia = imageTypes.__contains__(ext)
-            print(ismedia)
-            if ismedia:
-                whats.send_media(to=row['Names'],imagepath=row['Documents'],msg=row['Messages'])
-            else:
-                whats.send_document(to=row['Names'],docpath=row['Documents'])
-                time.sleep(2)
-                if len(row['Messages'])>0:
-                    whats.send_message(message=row['Messages'],to=row['Names'])
-
-        elif len(row['Names'])>0 and len(row['Messages']):
-            whats.send_message(to=row['Names'],message=row['Messages'])
-    loadingLabel.configure(text="Completed")
-    sendcsvButton.configure(text="Select File")
-
 def send_message():
     try:
         num_or_nameInputStr = num_or_nameInput.get()
@@ -83,10 +60,6 @@ def send_message():
 def browseFiles():
     filename = filedialog.askopenfilename(initialdir = "/", title = "Select a File", filetypes = (("Text files","*.txt*"), ("all files", "*.*")))
     fileSelector.configure(text=filename)
-
-def browseCSVfile():
-    csvfilename = filedialog.askopenfilename(initialdir = "/", title = "Select a File", filetypes = (("CSV files","*.csv*"), ("all files", "*.*")))
-    selectcsvButton.configure(text=csvfilename)
 
 def storeHistory():
     conn = sql.connect('history.db')
@@ -190,27 +163,6 @@ def checkifLogged():
     # QRlabel.configure(text="Logged In Already")
     print('Whatsapp successfully logged in...')
 
-
-# def checkifLogged2():
-#     # Not logged in
-#     small_timeout = 5
-#     messageShown = False
-#     while not whats.chrome.element_exists_at(whats.selectors['search_input'], timeout=small_timeout):
-#         # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
-#         elem =  whats.chrome.find_element_by_tag_name("canvas")
-#         elem.screenshot("./QRcode.png")
-#         QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
-#         QRlabel.configure(image=QRcodeimage,text='')
-#         # self.chrome.screenshot('./qrcode.png')
-#         if not messageShown:
-#             messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
-#             messageShown = True
-#         print('Look for whatsapp QRCode inside your running directory.')
-#         time.sleep(small_timeout)
-
-#     # QRlabel.configure(text="Logged In Already",image=None)
-#     print('Whatsapp successfully logged in...')
-
 if __name__ == '__main__':
     
     try:
@@ -242,7 +194,6 @@ if __name__ == '__main__':
 
         customSendFrame = LabelFrame(customSendParentFrame,text="Custom Send Message and/or Documents or Media")
         customSendQRFrame = LabelFrame(customSendParentFrame,text="QRCode")
-        csvsendFrame = LabelFrame(mainFrame,text="Send From CSV File")
         historyFrame = LabelFrame(mainFrame,text="History Handler")
         tableFrame = LabelFrame(mainFrame,text="Table")
 
@@ -268,11 +219,6 @@ if __name__ == '__main__':
 
         separator = Separator(customSendFrame,orient="horizontal")
 
-        csvsendLabel = Label(csvsendFrame,text="Send Messages using a CSV file")
-        selectcsvButton = Button(csvsendFrame,text="Select CSV file",command=browseCSVfile)
-        sendcsvButton = Button(csvsendFrame,text="Send from CSV file",command=send_csv)
-        loadingLabel = Label(csvsendFrame,text="")
-
         historyButton = Button(historyFrame,text="Show History",padding=1,command=table_view)
 
         num_or_nameLabel.grid(row=0,column=0)
@@ -282,17 +228,12 @@ if __name__ == '__main__':
         fileSelector.grid(row=2,column=0)
         submitButton.grid(row=2,column=1)
         separator.grid(row=3,columnspan=1)
-        csvsendLabel.grid(row=5,column=0)
-        selectcsvButton.grid(row=5,column=1)
-        sendcsvButton.grid(row=6,column=1)
-        loadingLabel.grid(row=7,column=1)
-        historyButton.grid(row=7,column=0)
+        historyButton.grid(row=4,column=0)
 
         
         customSendFrame.grid(row=0,column=0)
         customSendQRFrame.grid(row=0,column=1)
         customSendParentFrame.pack(fill="both",expand="yes")
-        csvsendFrame.pack(expand="yes",fill="both")
         historyFrame.pack(expand="yes",fill="both")
         tableFrame.pack(expand="yes",fill="both")
 

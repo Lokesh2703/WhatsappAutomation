@@ -10,7 +10,7 @@ from .chrome import Chrome
 # from .remote import ChromeRemote
 
 class Whatsapp:
-    
+
     def __init__(self):
         self.selectors = {
             'qrcode': 'canvas',
@@ -61,17 +61,17 @@ class Whatsapp:
             sleep(small_timeout)
         
         print('Whatsapp successfully logged in...')
-        self.chrome.screenshot('./1.png')
 
     def _search_for_chat(self, to):
         self.chrome.wait_for(self.selectors['search_input']).send_keys(to)
-        self.chrome.wait_for(self.selectors['search_result'].format(to)).click()
-        self.chrome.screenshot('./2.png')
+        elem = self.chrome.find_elements_by_class_name('matched-text')
+        if elem and len(elem)>0:
+            elem[0].click()
+        # self.chrome.wait_for(self.selectors['search_result'].format(to)).click()
     
     def _type_message(self, message):
         self.chrome.wait_for(self.selectors['message_input']).send_keys(message + '\n')
         # self.chrome.wait_for(selectors['message_send']).click()  # replaced by '\n' on previous line
-        self.chrome.screenshot('./3.png')
     
     def send_message(self, message, to):
         
