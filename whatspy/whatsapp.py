@@ -1,10 +1,12 @@
 from selenium import webdriver
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 from datetime import datetime
 from time import sleep
 import traceback
 import time
 from tkinter import messagebox
-from main import showQRcode
+# from main import showQRcode
 
 from .chrome import Chrome
 # from .remote import ChromeRemote
@@ -70,7 +72,12 @@ class Whatsapp:
         # self.chrome.wait_for(self.selectors['search_result'].format(to)).click()
     
     def _type_message(self, message):
-        self.chrome.wait_for(self.selectors['message_input']).send_keys(message + '\n')
+        messagelist = message.split(",")
+        for message in messagelist:
+            self.chrome.wait_for(self.selectors['message_input']).send_keys(message)
+            ActionChains(self.chrome).key_down(Keys.SHIFT).key_down(Keys.ENTER).key_up(Keys.ENTER).key_up(
+                    Keys.SHIFT).key_up(Keys.BACKSPACE).perform()
+        self.chrome.wait_for(self.selectors['message_input']).send_keys('\n')
         # self.chrome.wait_for(selectors['message_send']).click()  # replaced by '\n' on previous line
     
     def send_message(self, message, to):
@@ -98,7 +105,6 @@ class Whatsapp:
             
         except Exception as e:
             print('An unexpected error occured.')
-            self.chrome.screenshot('./error.png')
             # self.chrome.quit()
             
             raise e
@@ -115,7 +121,6 @@ class Whatsapp:
         chatbox = self.chrome.wait_for('#pane-side', timeout=timeout)
         chats = chatbox.find_elements_by_css_selector('div[tabindex]')
         
-        self.chrome.screenshot('./4.png')
         
         # print('chats', chats)
         for chat in chats:
@@ -145,7 +150,12 @@ class Whatsapp:
         except:
             traceback.print_exc() 
         time.sleep(3)
-        self.chrome.wait_for(self.selectors['media_message_input']).send_keys(msg)
+        messagelist = msg.split(",")
+        for message in messagelist:
+            self.chrome.wait_for(self.selectors['media_message_input']).send_keys(message)
+            ActionChains(self.chrome).key_down(Keys.SHIFT).key_down(Keys.ENTER).key_up(Keys.ENTER).key_up(
+                    Keys.SHIFT).key_up(Keys.BACKSPACE).perform()
+        # self.chrome.wait_for(self.selectors['media_message_input']).send_keys(msg)
         self.chrome.wait_for(self.selectors['media_send_button']).click()
         time.sleep(3)
 
@@ -181,14 +191,4 @@ class Whatsapp:
         self.chrome.wait_for(self.selectors['document_send_button']).click()
         time.sleep(3)
         print('File Sent!')
-
-
-
-if __name__ == '__main__':
-    message = 'whatsapp-bot ' + str(datetime.now())
-    to = '911234567890'
-    
-    whats = Whatsapp()
-    whats.send_message(message, to)
-    # whats.load_chats()
     
