@@ -56,11 +56,10 @@ class ChromeClass(SeleniumChrome):
             wait.until(EC.visibility_of_element_located(loc))
             # wait.until(EC.elementToBeClickable(loc))
             
-            print('Found', selector)
+            # print('Found', selector)
             return self.find_element_by_css_selector(selector)
         except TimeoutException:
             print('Loading took too much time!')
-            self.screenshot('screens/error.png')
             return None
 
 

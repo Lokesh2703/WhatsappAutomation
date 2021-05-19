@@ -42,8 +42,8 @@ def send_message():
             try:
                 whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
             except Exception as e:
-                print(e)
-                raise e
+                # print(e)
+                return
 
         conn = sql.connect('history.db')
         c = conn.cursor()
@@ -175,6 +175,7 @@ if __name__ == '__main__':
                 
                 send_message()
             elif choice==3:
+                whats.chrome.quit()
                 exit()
 
     except Exception as e:

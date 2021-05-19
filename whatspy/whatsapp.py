@@ -1,3 +1,4 @@
+from typing_extensions import IntVar
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
@@ -5,7 +6,6 @@ from datetime import datetime
 from time import sleep
 import traceback
 import time
-from tkinter import messagebox
 # from main import showQRcode
 
 from .chrome import Chrome
@@ -42,37 +42,42 @@ class Whatsapp:
         pass
         
     def _check_valid_qrcode(self):
+        pass
         # Not logged in
-        small_timeout = 5
-        messageShown = False
-        while not self.chrome.element_exists_at(self.selectors['search_input'], timeout=small_timeout):
-            # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
-            elem =  self.chrome.find_element_by_tag_name("canvas")
-            elem.screenshot("./QRcode.png")
-            # try:
-            #     showQRcode()
-            # except Exception as e:
-            #     print(e)
-            #     print("Error in showQRcode")
-                # raise e
-            # self.chrome.screenshot('./qrcode.png')
-            if not messageShown:
-                messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
-                messageShown = True
-            print('Look for whatsapp QRCode inside your running directory.')
-            sleep(small_timeout)
+        # small_timeout = 5
+        # # messageShown = False
+        # while not self.chrome.element_exists_at(self.selectors['search_input'], timeout=small_timeout):
+        #     # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
+        #     elem =  self.chrome.find_element_by_tag_name("canvas")
+        #     elem.screenshot("./QRcode.png")
+        #     # try:
+        #     #     showQRcode()
+        #     # except Exception as e:
+        #     #     print(e)
+        #     #     print("Error in showQRcode")
+        #         # raise e
+        #     # self.chrome.screenshot('./qrcode.png')
+        #     # if not messageShown:
+        #     #     messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
+        #     #     messageShown = True
+        #     print('Look for whatsapp QRCode inside your running directory.')
+        #     sleep(small_timeout)
         
-        print('Whatsapp successfully logged in...')
+        # print('Whatsapp successfully logged in...')
 
     def _search_for_chat(self, to):
         self.chrome.wait_for(self.selectors['search_input']).send_keys(to)
         elem = self.chrome.find_elements_by_class_name('matched-text')
         if elem and len(elem)>0:
             elem[0].click()
+        else:
+            raise Exception()
         # self.chrome.wait_for(self.selectors['search_result'].format(to)).click()
     
     def _type_message(self, message):
         messagelist = message.split(",")
+        if self.chrome.wait_for(self.selectors['message_input'],10)==None:
+            raise Exception()
         for message in messagelist:
             self.chrome.wait_for(self.selectors['message_input']).send_keys(message)
             ActionChains(self.chrome).key_down(Keys.SHIFT).key_down(Keys.ENTER).key_up(Keys.ENTER).key_up(
@@ -81,32 +86,24 @@ class Whatsapp:
         # self.chrome.wait_for(selectors['message_send']).click()  # replaced by '\n' on previous line
     
     def send_message(self, message, to):
-        
+
+            # try:
+            #     self._check_valid_qrcode()
+            # except Exception as e:
+            #     print('An Error in checking Validation')
+            #     return
         try:
-            try:
-                self._check_valid_qrcode()
-            except Exception as e:
-                print('An Error in checking Validation')
-                raise e
-            try:
-                if to.isdigit():
-                    self._search_unknown_contact(to)
-                else:
-                    self._search_for_chat(to)   
-            except Exception as e:
-                print('Error in searching for Chat')
-                raise e
-            try:
-                self._type_message(message)
-            except Exception as e:
-                print('Error in Typing Message or Number not Found')
-                raise e
-            
-            
+            if to.isdigit():
+                self._search_unknown_contact(to)
+            else:
+                self._search_for_chat(to)   
         except Exception as e:
-            print('An unexpected error occured.')
-            # self.chrome.quit()
-            
+            print('Error: Number or Contact not Found1')
+            raise e
+        try:
+            self._type_message(message)
+        except Exception as e:
+            print('Error: Number or Contact not Found')
             raise e
             
             
@@ -161,8 +158,11 @@ class Whatsapp:
 
     def _search_unknown_contact(self,number):
         try:
-            self._check_valid_qrcode()
+            # self._check_valid_qrcode()
             self.chrome.get(self.link.format(number))
+            # isinvalid = self.chrome.find_element_by_xpath('//*[@id="app"]/div[1]/span[2]/div[1]/span/div[1]/div/div/div/div/div[2]/div')
+            # if isinvalid:
+            #     isinvalid.click()
         except Exception as e:
             print(e)
             return
