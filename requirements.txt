@@ -2,3 +2,4 @@ sqlite-dump
 sqlite3
 tkinter
 selenium
+pandas

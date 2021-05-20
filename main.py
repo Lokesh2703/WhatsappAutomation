@@ -12,166 +12,64 @@ import sqlite3 as sql
 import datetime
 from tkinter import ttk
 from PIL import ImageTk, Image
+import threading
+import pandas as pd
 # from sqlite_dump import iterdump
 
 imageTypes = {'jpeg':1,'jpg':1,'mkv':1,'mp4':1,'gif':1,'png':1,'webp':1,'svg':1}
 
-def send_csv():
-    file = open(selectcsvButton.cget('text'))
-    csv_file = csv.DictReader(file)
-    loadingLabel.configure(text="Loading....")
-    for row in csv_file:
-        print(row['Names'],row['Messages'],row['Documents'])
-        if (len(row['Names'])>0 and len(row['Documents'])>0):
-            ext = str(row['Documents'].split('.')[1])
-            ismedia = imageTypes.__contains__(ext)
-            print(ismedia)
-            if ismedia:
-                whats.send_media(to=row['Names'],imagepath=row['Documents'],msg=row['Messages'])
-            else:
-                whats.send_document(to=row['Names'],docpath=row['Documents'])
-                time.sleep(2)
-                if len(row['Messages'])>0:
-                    whats.send_message(message=row['Messages'],to=row['Names'])
-
-        elif len(row['Names'])>0 and len(row['Messages']):
-            whats.send_message(to=row['Names'],message=row['Messages'])
-    loadingLabel.configure(text="Completed")
-    sendcsvButton.configure(text="Select File")
-
 def send_message():
     try:
-        num_or_nameInputStr = num_or_nameInput.get()
-        messageInputStr = messageInput.get(1.0,"end-1c")
-        checkifLogged()
-        if fileSelector.cget('text')!="Select File":
-            if os.path.exists(fileSelector.cget('text')):
-                ext = str(fileSelector.cget('text').split('.')[1])
-                ismedia = imageTypes.__contains__(ext)
-                if ismedia:
-                    whats.send_media(to=num_or_nameInputStr,imagepath=fileSelector.cget('text'),msg=messageInputStr)
-                else:
-                    if len(messageInputStr)>0:
-                        whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
-                    whats.send_document(to=num_or_nameInputStr,docpath=fileSelector.cget('text'))
+        # num_or_nameInputStr = num_or_nameInput.get()
+        num_or_nameInputStr = num_or_name
+        messageInputStr = message
+        # messageInputStr = messageInput.get(1.0,"end-1c")
+        loggedin = threading.Thread(target=checkifLogged)
+        loggedin.start()
+        loggedin.join()
+        
+        if len(filepath)>0:
+            ext = str(filepath.split('.')[1])
+            ismedia = imageTypes.__contains__(ext)
+            if ismedia:
+                whats.send_media(to=num_or_nameInputStr,imagepath=filepath,msg=messageInputStr)
+            else:
+                if len(messageInputStr)>0:
+                    whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
+                    whats.send_document2(to=num_or_nameInputStr,docpath=filepath)
+                elif len(messageInputStr)==0:
+                    whats.send_document(to=num_or_nameInputStr,docpath=filepath)
+
         elif len(messageInputStr)>0:
             try:
                 whats.send_message(message=messageInputStr,to=num_or_nameInputStr)
             except Exception as e:
-                print(e)
-                raise e
+                # print(e)
+                return
+
         conn = sql.connect('history.db')
         c = conn.cursor()
         
         c.execute('''INSERT INTO historywhats (nameornum,message,filepath,date) VALUES (?,?,?,?)''',
-                    (num_or_nameInputStr,messageInputStr,fileSelector.cget('text') if fileSelector.cget('text')!="Select File" else "",datetime.datetime.now().date().__str__()))
+                    (num_or_nameInputStr,messageInputStr,filepath,datetime.datetime.now().date().__str__()))
         c.close()
         conn.commit()
         conn.close()
-        messagebox.showinfo('Successful','Completed\nSent the message and/or document Successfully')
+        # messagebox.showinfo('Successful','Completed\nSent the message and/or document Successfully')
         print("Successfully sent message {} to {}".format(messageInputStr,num_or_nameInputStr))
-        num_or_nameInput.delete("0","end")
-        messageInput.delete(1.0,"end")
-        fileSelector.configure(text="Select File")
+        # num_or_nameInput.delete("0","end")
+        # messageInput.delete(1.0,"end")
+        # fileSelector.configure(text="Select File")
     except Exception as e:
         print(e)
         print("Error in Send_Message\n1. Check if Number or Name is Correct")
-        messagebox.showerror("Error in Sending Message","Error in Send_Message\n1. Check if Number or Name is Correct\n2. Check if document exists(if selected any)")
-        # raise e
 
 
-def browseFiles():
-    filename = filedialog.askopenfilename(initialdir = "/", title = "Select a File", filetypes = (("Text files","*.txt*"), ("all files", "*.*")))
-    fileSelector.configure(text=filename)
+QRlabel = None
+guiwin = None
 
-def browseCSVfile():
-    csvfilename = filedialog.askopenfilename(initialdir = "/", title = "Select a File", filetypes = (("CSV files","*.csv*"), ("all files", "*.*")))
-    selectcsvButton.configure(text=csvfilename)
-
-def storeHistory():
-    conn = sql.connect('history.db')
-    c = conn.cursor()
-    
-    c.execute('SELECT * FROM historywhats')
-    
-    file = open('history.csv','w')
-    file.writelines(['Names,','Messages,','FilePath,','Date\n'])
-    while True:
-        batch = c.fetchmany(10)
-        if not batch:
-            break
-        for row in batch:
-            for element in row:
-                file.write(repr(element)+",")
-            file.write("\n")
-    
-    file.close()
-    messagebox.showinfo("Successful","History stored in history.txt")
-    c.close()
-    conn.commit()
-    conn.close()
-
-def table_view():
-    conn = sql.connect('history.db')
-    c = conn.cursor()
-    
-    c.execute('SELECT * FROM historywhats')
-
-    tree = ttk.Treeview(tableFrame)
-    tree['show']='headings'
-
-    style.configure("Treeview.Heading",foreground="blue",font=('Times New Roman',12,"bold"))
-
-    tree["columns"] = ("Names","Messages","Documents","Date")
-
-    tree.column("Names",width = 50,minwidth=50,anchor = CENTER)
-    tree.column("Messages",width = 50,minwidth=50,anchor = CENTER)
-    tree.column("Documents",width = 50,minwidth=50,anchor = CENTER)
-    tree.column("Date",width = 50,minwidth=50,anchor = CENTER)
-
-    tree.heading("Names",text="Names",anchor = CENTER)
-    tree.heading("Messages",text="Messages",anchor = CENTER)
-    tree.heading("Documents",text="Documents",anchor = CENTER)
-    tree.heading("Date",text="Date",anchor = CENTER)
-
-    i=0
-    while True:
-        batch = c.fetchmany(10)
-        if not batch:
-            break
-        for row in batch:
-            tree.insert('',i,text="",values=(row[0],row[1],row[2],row[3]))
-            i=i+1
-
-    horizontalScrollbar = ttk.Scrollbar(tableFrame,orient="horizontal")
-    horizontalScrollbar.configure(command=tree.xview)
-    tree.configure(xscrollcommand=horizontalScrollbar.set)
-    horizontalScrollbar.pack(fill=X,side=BOTTOM)
-
-    verticalScrollbar = ttk.Scrollbar(tableFrame,orient="vertical")
-    verticalScrollbar.configure(command=tree.yview)
-    tree.configure(yscrollcommand=verticalScrollbar.set)
-    verticalScrollbar.pack(fill=Y,side=RIGHT)
-
-    c.close()
-    conn.commit()
-    conn.close()
-    tree.pack(expand=True,fill="both")
-
-# def checkifLogged():
-#     if whats._check_valid_qrcode():
-#         if os.path.exists("./QRcode.png"):
-#             QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
-#             QRlabel.configure(image=QRcodeimage,text='')
-
-def showQRcode():
-    global QRlabel
-    QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
-    QRlabel.configure(image=QRcodeimage,text='')
-    QRlabel.pack()
-
-def checkifLogged():
-    # Not logged in
+def displayQR():
+    global QRlabel,guiwin
     small_timeout = 5
     messageShown = False
     while not whats.chrome.element_exists_at(whats.selectors['search_input'], timeout=small_timeout):
@@ -179,6 +77,7 @@ def checkifLogged():
         elem =  whats.chrome.find_element_by_tag_name("canvas")
         elem.screenshot("./QRcode.png")
         QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
+        print("Scan")
         QRlabel.configure(image=QRcodeimage,text='')
         # self.chrome.screenshot('./qrcode.png')
         if not messageShown:
@@ -186,30 +85,61 @@ def checkifLogged():
             messageShown = True
         print('Look for whatsapp QRCode inside your running directory.')
         time.sleep(small_timeout)
-
-    # QRlabel.configure(text="Logged In Already")
+    guiwin.destroy()
     print('Whatsapp successfully logged in...')
+# def threadQR():
+#     displayQRThread = threading.Thread(target=displayQR)
+#     displayQRThread.start()
+#     displayQRThread.join()
 
+def checkifLogged():
+    # Not logged in
+    global QRlabel,guiwin
+    small_timeout = 5
+    messageShown = False
+    if not whats.chrome.element_exists_at(whats.selectors['search_input'], timeout=small_timeout):
+        guiwin = Tk()
+        guiwin.title('WhatsApp Automator')
+        guiwin.geometry("800x600")
+        def on_closing():
+            whats.chrome.quit()
+            guiwin.destroy()
+        guiwin.protocol("WM_DELETE_WINDOW", on_closing)
+        mainFrame = Frame(guiwin)
+        customSendQRFrame = LabelFrame(mainFrame,text="QRCode")
+        QRlabel = Label(customSendQRFrame,text="Session")
+        QRlabel.pack()
+        customSendQRFrame.pack(fill="both",expand="yes")
+        displayQRcode = Button(guiwin,text = "Display QR",command=displayQR)
+        displayQRcode.pack()
+        
+        mainFrame.pack(fill="both",expand="yes")
+        
+        guiwin.mainloop()
 
-# def checkifLogged2():
-#     # Not logged in
-#     small_timeout = 5
-#     messageShown = False
-#     while not whats.chrome.element_exists_at(whats.selectors['search_input'], timeout=small_timeout):
-#         # qrcode = self.chrome.wait_for(self.selectors['qrcode'], timeout=small_timeout)
-#         elem =  whats.chrome.find_element_by_tag_name("canvas")
-#         elem.screenshot("./QRcode.png")
-#         QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
-#         QRlabel.configure(image=QRcodeimage,text='')
-#         # self.chrome.screenshot('./qrcode.png')
-#         if not messageShown:
-#             messagebox.showinfo("No previous Login","No Previous Session Info\nCheck current directory for QR Code to scan")
-#             messageShown = True
-#         print('Look for whatsapp QRCode inside your running directory.')
-#         time.sleep(small_timeout)
+def displaydatabase():
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
+    conn = sql.connect('history.db')
+    # c = conn.cursor()
+    
+    # for chunk  in read_sql_query('SELECT * FROM historywhats',conn,chunksize=2):
+    #     print(chunk)
+    print(pd.read_sql_query('SELECT * FROM historywhats',conn))
+    print('\n\n')
+    conn.close()
 
-#     # QRlabel.configure(text="Logged In Already",image=None)
-#     print('Whatsapp successfully logged in...')
+def clear():
+  
+    # for windows
+    if os.name == 'nt':
+        _ = os.system('cls')
+  
+    # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = os.system('clear')
 
 if __name__ == '__main__':
     
@@ -232,76 +162,27 @@ if __name__ == '__main__':
 
         conn.commit()
         conn.close()
-        guiwin = Tk()
-        guiwin.title('WhatsApp Automator')
-        guiwin.geometry("800x600")
-        style = ttk.Style(guiwin)
-        style.theme_use("xpnative")
-        mainFrame = Frame(guiwin)
-        customSendParentFrame = LabelFrame(mainFrame,text="Custom Send Parent Frame")
-
-        customSendFrame = LabelFrame(customSendParentFrame,text="Custom Send Message and/or Documents or Media")
-        customSendQRFrame = LabelFrame(customSendParentFrame,text="QRCode")
-        csvsendFrame = LabelFrame(mainFrame,text="Send From CSV File")
-        historyFrame = LabelFrame(mainFrame,text="History Handler")
-        tableFrame = LabelFrame(mainFrame,text="Table")
-
-        def on_closing():
-            whats.chrome.quit()
-            guiwin.destroy()
-        guiwin.protocol("WM_DELETE_WINDOW", on_closing)
-        num_or_nameLabel = Label(customSendFrame,text="Enter Name or Number: ")
-        num_or_nameInput = Entry(customSendFrame,width=30)
-        messageLabel = Label(customSendFrame,text="Enter Message: ")
-        messageInput = Text(customSendFrame,height=10,width=30)
-        fileSelector = Button(customSendFrame,command=browseFiles,text="Select File")
-        submitButton = Button(customSendFrame,text="Send Message",command=send_message)
-        
-        QRlabel = Label(customSendQRFrame,text="Session")
-        QRlabel.pack()
-        # checkQRButton = Button(customSendQRFrame,text="Check if Logged in",command=checkifLogged)
-        # checkQRButton.pack()
-        # if whats._check_valid_qrcode():
-        #     if os.path.exists("./QRcode.png"):
-        #         QRcodeimage = ImageTk.PhotoImage(Image.open("./QRcode.png"))
-        #         QRlabel.configure(image=QRcodeimage,text='')
-
-        separator = Separator(customSendFrame,orient="horizontal")
-
-        csvsendLabel = Label(csvsendFrame,text="Send Messages using a CSV file")
-        selectcsvButton = Button(csvsendFrame,text="Select CSV file",command=browseCSVfile)
-        sendcsvButton = Button(csvsendFrame,text="Send from CSV file",command=send_csv)
-        loadingLabel = Label(csvsendFrame,text="")
-
-        historyButton = Button(historyFrame,text="Show History",padding=1,command=table_view)
-
-        num_or_nameLabel.grid(row=0,column=0)
-        num_or_nameInput.grid(row=0,column=1)
-        messageLabel.grid(row=1,column=0)
-        messageInput.grid(row=1,column=1)
-        fileSelector.grid(row=2,column=0)
-        submitButton.grid(row=2,column=1)
-        separator.grid(row=3,columnspan=1)
-        csvsendLabel.grid(row=5,column=0)
-        selectcsvButton.grid(row=5,column=1)
-        sendcsvButton.grid(row=6,column=1)
-        loadingLabel.grid(row=7,column=1)
-        historyButton.grid(row=7,column=0)
-
-        
-        customSendFrame.grid(row=0,column=0)
-        customSendQRFrame.grid(row=0,column=1)
-        customSendParentFrame.pack(fill="both",expand="yes")
-        csvsendFrame.pack(expand="yes",fill="both")
-        historyFrame.pack(expand="yes",fill="both")
-        tableFrame.pack(expand="yes",fill="both")
-
-        mainFrame.pack(fill="both",expand="yes",padx=10,pady=10)
-        
-        guiwin.mainloop()
-        checkifLogged()
-        # time.sleep(5)
-        # whats.chrome.quit()
+        clear()
+        while True:
+            try:
+                choice = int(input("Choose an Option:\n1. Display the history.\n2. Send a message.\n3. Exit\nEnter the choice: "))
+            except Exception as e:
+                print("Enter the choice Correctly")
+                continue
+            if choice==1:
+                displaydatabase()
+            elif choice==2:
+                num_or_name = input("Enter the name or number: ")
+                message = input("Enter the message(newline are replaced by commmas) : ")
+                filepath = input("Enter the path of the file with extension(Press Enter for no file input): ")
+                while len(filepath)>0 and not (os.path.exists(filepath) and os.path.isfile(filepath)):
+                    print("PATH is incorrect!")
+                    filepath = input("Enter the CORRECT path of the file with extension(Press Enter for no file input): ")
+                
+                send_message()
+            elif choice==3:
+                whats.chrome.quit()
+                exit()
 
     except Exception as e:
         print(e)
